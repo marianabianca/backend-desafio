@@ -6,13 +6,13 @@ app = Flask(__name__)
 
 client = MongoClient(
     os.environ.get("DATABASE_HOST"),
-    os.environ.get("DATABASE_PORT"),
+    int(os.environ.get("DATABASE_PORT")),
     username = os.environ.get("DATABASE_USERNAME"),
     password = os.environ.get("DATABASE_PASSWORD")
     )
 
 db = client.flask_db
-todos = db.todos
+clients = db.clients
 
 @app.route("/clientes", methods=['POST'])
 def create_new_client():
