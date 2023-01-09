@@ -1,6 +1,18 @@
 from flask import Flask
+from pymongo import MongoClient
+import os
 
 app = Flask(__name__)
+
+client = MongoClient(
+    os.environ.get("DATABASE_HOST"),
+    os.environ.get("DATABASE_PORT"),
+    username = os.environ.get("DATABASE_USERNAME"),
+    password = os.environ.get("DATABASE_PASSWORD")
+    )
+
+db = client.flask_db
+todos = db.todos
 
 @app.route("/clientes", methods=['POST'])
 def create_new_client():
