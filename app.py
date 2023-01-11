@@ -3,6 +3,7 @@ from pymongo import MongoClient
 from flask_expects_json import expects_json
 from datetime import datetime
 from bson import json_util, ObjectId
+from schemas import post_schema, put_schema
 import os
 
 app = Flask(__name__)
@@ -17,52 +18,18 @@ client = MongoClient(
 db = client.desafio_backend
 customers = db.customers
 
-dados_bancarios = {
-    "type": "object",
-    "properties": {
-        "ag": {"type": "string", "pattern": "^[0-9]{4}$"},
-        "conta": {"type": "string", "pattern": "^[0-9]{5}-[0-9Xx]{1}$"},
-        "banco": {"type": "string", "minLength": 3}
-    },
-    "requeired": ["ag", "conta", "banco"]
-}
-
-post_schema = {
-    "type": "object",
-    "properties": {
-        "razao_social": {"type": "string"},
-        "telefone": {
-            "type": "string",
-            "pattern": "^([0-9]{2,3})?([0-9]{2})([0-9]{4,5})([0-9]{4})$"
-        },
-        "endereco": {
-            "type": "string",
-            "minLength": 3  
-        },
-        "faturamento_declarado": {
-            "type": "number",
-            "minimum": 0
-        },
-        "dados_bancarios": {
-            "type": "array",
-            "minItems": 1,
-            "uniqueItems": True,
-            "items": dados_bancarios
-        }
-    },
-    "required": [
-        "razao_social",
-        "telefone",
-        "endereco",
-        "faturamento_declarado",
-        "dados_bancarios"
-    ]
-}
-
 def get_customer_by_id(id):
     id = ObjectId(id)
     customer = customers.find_one({"_id": id})
     return customer
+
+
+def validate_id(id):
+    if not ObjectId.is_valid(id):
+        return "Invalid ID format", 422
+    response = get_customer_by_id(id)
+    if response == None:
+        return "Customer not found", 404
 
 
 @app.route("/clientes", methods=['POST'])
@@ -71,8 +38,6 @@ def create_new_customer():
     customer = request.json
     now = datetime.now()
     customer["data_cadastro"] = now.isoformat()
-    print(type(customer))
-    print(customer)
 
     inserted_id = customers.insert_one(customer).inserted_id
     return json_util.dumps(get_customer_by_id(inserted_id))
@@ -86,19 +51,35 @@ def get_all_customers():
 
 @app.route("/clientes/<id>", methods=['GET'])
 def get_customer(id):
-    if ObjectId.is_valid(id):
-        response = get_customer_by_id(id)
-        if response != None:
-            return json_util.dumps(response)
-        return "Customer not found", 404
-    return "Invalid ID format", 422
+    invalid_id = validate_id(id)
+    if invalid_id:
+        return invalid_id
+
+    response = get_customer_by_id(id)
+    return json_util.dumps(response)
 
 
 @app.route("/clientes/<id>", methods=['PUT'])
+@expects_json(put_schema)
 def update_customer(id):
-    return id
+    invalid_id = validate_id(id)
+    if invalid_id:
+        return invalid_id
+    
+    update = request.json
+    now = datetime.now()
+    update['ultima_atualizacao'] = now.isoformat()
+    filter = {"_id": ObjectId(id)}
+
+    customers.update_one(filter, {"$set": update})
+    return json_util.dumps(get_customer_by_id(id))
     
 
 @app.route("/clientes/<id>", methods=['DELETE'])
 def delete_customer(id):
-    return id
+    invalid_id = validate_id(id)
+    if invalid_id:
+        return invalid_id
+    customers.delete_one({"_id": ObjectId(id)})
+    return "", 204
+
