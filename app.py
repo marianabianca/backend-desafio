@@ -3,7 +3,8 @@ from pymongo import MongoClient
 from flask_expects_json import expects_json
 from datetime import datetime
 from bson import json_util, ObjectId
-from schemas import post_schema, put_schema
+from schemas.customer import post_schema, put_schema
+from errors.exceptions import InvalidIDException, ContentNotFoundException, APIException
 import os
 
 app = Flask(__name__)
@@ -19,17 +20,13 @@ db = client.desafio_backend
 customers = db.customers
 
 def get_customer_by_id(id):
+    if not ObjectId.is_valid(id):
+        raise InvalidIDException()
     id = ObjectId(id)
     customer = customers.find_one({"_id": id})
+    if customer == None:
+        raise ContentNotFoundException()
     return customer
-
-
-def validate_id(id):
-    if not ObjectId.is_valid(id):
-        return "Invalid ID format", 422
-    response = get_customer_by_id(id)
-    if response == None:
-        return "Customer not found", 404
 
 
 @app.route("/clientes", methods=['POST'])
@@ -51,35 +48,38 @@ def get_all_customers():
 
 @app.route("/clientes/<id>", methods=['GET'])
 def get_customer(id):
-    invalid_id = validate_id(id)
-    if invalid_id:
-        return invalid_id
-
-    response = get_customer_by_id(id)
-    return json_util.dumps(response)
+    try:
+        customer = get_customer_by_id(id)
+    except APIException as e:
+        return json_util.dumps(e.message), e.status
+        
+    return json_util.dumps(customer)
 
 
 @app.route("/clientes/<id>", methods=['PUT'])
 @expects_json(put_schema)
 def update_customer(id):
-    invalid_id = validate_id(id)
-    if invalid_id:
-        return invalid_id
+    try:
+        get_customer_by_id(id)
+    except APIException as e:
+        return json_util.dumps(e.message), e.status
     
     update = request.json
     now = datetime.now()
     update['ultima_atualizacao'] = now.isoformat()
     filter = {"_id": ObjectId(id)}
 
-    customers.update_one(filter, {"$set": update})
+    customers.update_one(filter, {"$set": update}).raw_result
     return json_util.dumps(get_customer_by_id(id))
     
 
 @app.route("/clientes/<id>", methods=['DELETE'])
 def delete_customer(id):
-    invalid_id = validate_id(id)
-    if invalid_id:
-        return invalid_id
+    try:
+        get_customer_by_id(id)
+    except APIException as e:
+        return json_util.dumps(e.message), e.status
+        
     customers.delete_one({"_id": ObjectId(id)})
     return "", 204
 
