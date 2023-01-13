@@ -1,23 +1,22 @@
-from flask import Flask, request
-from pymongo import MongoClient
+from flask import request, Blueprint
 from flask_expects_json import expects_json
 from datetime import datetime
 from bson import json_util, ObjectId
-from schemas.customer import post_schema, put_schema
-from errors.exceptions import InvalidIDException, ContentNotFoundException, APIException
-import os
+from desafio.schemas.customers import post_schema, put_schema
+from desafio.errors.exceptions import InvalidIDException, ContentNotFoundException, APIException
+from desafio import db
 
-app = Flask(__name__)
+customers_bp = Blueprint("clientes", __name__)
 
-client = MongoClient(
-    os.environ.get("DATABASE_HOST"),
-    int(os.environ.get("DATABASE_PORT")),
-    username = os.environ.get("DATABASE_USERNAME"),
-    password = os.environ.get("DATABASE_PASSWORD")
-    )
-
-db = client.desafio_backend
 customers = db.customers
+
+def handle_exception(err):
+    response = {
+        "error": err.message,
+        "status": err.status
+    }
+    return json_util.dumps(response), err.status
+
 
 def get_customer_by_id(id):
     if not ObjectId.is_valid(id):
@@ -29,7 +28,7 @@ def get_customer_by_id(id):
     return customer
 
 
-@app.route("/clientes", methods=['POST'])
+@customers_bp.route("/", methods=['POST'])
 @expects_json(post_schema)
 def create_new_customer():
     customer = request.json
@@ -40,29 +39,29 @@ def create_new_customer():
     return json_util.dumps(get_customer_by_id(inserted_id))
 
 
-@app.route("/clientes", methods=['GET'])
+@customers_bp.route("/", methods=['GET'])
 def get_all_customers():
     result = customers.find()
     return json_util.dumps(result)
 
 
-@app.route("/clientes/<id>", methods=['GET'])
+@customers_bp.route("/<id>", methods=['GET'])
 def get_customer(id):
     try:
         customer = get_customer_by_id(id)
     except APIException as e:
-        return json_util.dumps(e.message), e.status
+        return handle_exception(e)
         
     return json_util.dumps(customer)
 
 
-@app.route("/clientes/<id>", methods=['PUT'])
+@customers_bp.route("/<id>", methods=['PUT'])
 @expects_json(put_schema)
 def update_customer(id):
     try:
         get_customer_by_id(id)
     except APIException as e:
-        return json_util.dumps(e.message), e.status
+        return handle_exception(e)
     
     update = request.json
     now = datetime.now()
@@ -73,12 +72,12 @@ def update_customer(id):
     return json_util.dumps(get_customer_by_id(id))
     
 
-@app.route("/clientes/<id>", methods=['DELETE'])
+@customers_bp.route("/<id>", methods=['DELETE'])
 def delete_customer(id):
     try:
         get_customer_by_id(id)
     except APIException as e:
-        return json_util.dumps(e.message), e.status
+        return handle_exception(e)
         
     customers.delete_one({"_id": ObjectId(id)})
     return "", 204
