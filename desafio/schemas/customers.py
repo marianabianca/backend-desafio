@@ -5,7 +5,7 @@ dados_bancarios = {
         "conta": {"type": "string", "pattern": "^[0-9]{5}-[0-9Xx]{1}$"},
         "banco": {"type": "string", "minLength": 3}
     },
-    "requeired": ["ag", "conta", "banco"]
+    "required": ["ag", "conta", "banco"]
 }
 
 customer_properties = {

@@ -36,7 +36,7 @@ def create_new_customer():
     customer["data_cadastro"] = now.isoformat()
 
     inserted_id = customers.insert_one(customer).inserted_id
-    return json_util.dumps(get_customer_by_id(inserted_id))
+    return json_util.dumps(get_customer_by_id(inserted_id)), 201
 
 
 @customers_bp.route("/", methods=['GET'])
