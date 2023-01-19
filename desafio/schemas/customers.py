@@ -1,11 +1,17 @@
 dados_bancarios = {
-    "type": "object",
-    "properties": {
-        "ag": {"type": "string", "pattern": "^[0-9]{4}$"},
-        "conta": {"type": "string", "pattern": "^[0-9]{5}-[0-9Xx]{1}$"},
-        "banco": {"type": "string", "minLength": 3}
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "ag": {"type": "string", "pattern": "^[0-9]{4}$"},
+            "conta": {"type": "string", "pattern": "^[0-9]{5}-[0-9Xx]{1}$"},
+            "banco": {"type": "string", "minLength": 3}
+        },
+        "required": ["ag", "conta", "banco"],
+        "additionalProperties": False
     },
-    "required": ["ag", "conta", "banco"]
+    "minItems": 1,
+    "uniqueItems": True,
 }
 
 customer_properties = {
@@ -22,12 +28,7 @@ customer_properties = {
         "type": "number",
         "minimum": 0
     },
-    "dados_bancarios": {
-        "type": "array",
-        "minItems": 1,
-        "uniqueItems": True,
-        "items": dados_bancarios
-    }
+    "dados_bancarios": dados_bancarios
 }
 
 post_schema = {
