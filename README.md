@@ -11,12 +11,12 @@ Desafio de programação de backend
 - Entre no ambiente virtual, dentro do diretório raiz, utilizando o comando: `venv\Scripts\activate`
 - Então, instale as bibliotecas necessárias com o seguinte comando:
 `pip install -r requirements.txt`
-- Para iniciar o servidor, rode, ainda dentro do ambiente virtual, o comando: `flask --app app run`
+- Para iniciar o servidor, rode, ainda dentro do ambiente virtual, o comando: `flask --app desafio --debug run`
 
 ## Execuções seguintes
 
 - Entre no ambiente virtual, dentro do diretório raiz, utilizando o comando: `venv\Scripts\activate`
-- Para iniciar o servidor, rode, ainda dentro do ambiente virtual, o comando: `flask --app app run`
+- Para iniciar o servidor, rode, ainda dentro do ambiente virtual, o comando: `flask --app desafio --debug run`
 
 ## Como finalizar a execução
 
