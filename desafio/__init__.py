@@ -1,20 +1,23 @@
 from flask import Flask
+from desafio.database.models import db
 import os
-from pymongo import MongoClient
 
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
 
     # initialize db
-    global db
-    mongo = MongoClient(
-            os.environ.get("DATABASE_HOST"),
-            int(os.environ.get("DATABASE_PORT")),
-            username = os.environ.get("DATABASE_USERNAME"),
-            password = os.environ.get("DATABASE_PASSWORD")
-        )
-    db = mongo.desafio_backend
+    app.config['MONGODB_SETTINGS'] = [
+        {
+            "db": os.environ.get('DATABASE_NAME'),
+            "host": os.environ.get("DATABASE_HOST"),
+            "port": int(os.environ.get("DATABASE_PORT")),
+            "username": os.environ.get("DATABASE_USERNAME"),
+            "password": os.environ.get("DATABASE_PASSWORD")
+        }
+    ]
+
+    db.init_app(app)
 
     # register routes
     from desafio.routes.customers import customers_bp

@@ -4,11 +4,10 @@ from datetime import datetime
 from bson import json_util, ObjectId
 from desafio.schemas.customers import post_schema, put_schema, dados_bancarios
 from desafio.errors.exceptions import InvalidIDException, ContentNotFoundException, APIException
-from desafio import db
+import desafio.database.models as models
+import json
 
 customers_bp = Blueprint("clientes", __name__)
-
-customers = db.customers
 
 def handle_exception(err):
     response = {
@@ -21,11 +20,11 @@ def handle_exception(err):
 def get_customer_by_id(id):
     if not ObjectId.is_valid(id):
         raise InvalidIDException()
-    id = ObjectId(id)
-    customer = customers.find_one({"_id": id})
-    if customer == None:
+    try:
+        customer = models.Customer.objects().get(id=id)
+    except:
         raise ContentNotFoundException()
-    return customer
+    return customer.to_json()
 
 
 def set_last_update(object):
@@ -36,18 +35,18 @@ def set_last_update(object):
 @customers_bp.route("/", methods=['POST'])
 @expects_json(post_schema)
 def create_new_customer():
-    customer = request.json
+    customer = request.get_json()
     now = datetime.now()
     customer["data_cadastro"] = now.isoformat()
 
-    inserted_id = customers.insert_one(customer).inserted_id
-    return json_util.dumps(get_customer_by_id(inserted_id)), 201
+    new_customer = models.Customer(**customer).save()
+    return new_customer.to_json(), 201
 
 
 @customers_bp.route("/", methods=['GET'])
 def get_all_customers():
-    result = customers.find()
-    return json_util.dumps(result)
+    result = models.Customer.objects()
+    return result.to_json()
 
 
 @customers_bp.route("/<id>", methods=['GET'])
@@ -57,7 +56,7 @@ def get_customer(id):
     except APIException as e:
         return handle_exception(e)
         
-    return json_util.dumps(customer)
+    return customer
 
 
 @customers_bp.route("/<id>", methods=['PUT'])
@@ -68,12 +67,11 @@ def update_customer(id):
     except APIException as e:
         return handle_exception(e)
     
-    update = request.json
+    update = request.get_json()
     set_last_update(update)
-    filter = {"_id": ObjectId(id)}
-    customers.update_one(filter, {"$set": update}).raw_result
+    models.Customer.objects(id=id).update(**update)
 
-    return json_util.dumps(get_customer_by_id(id))
+    return '', 200
 
 
 @customers_bp.route("/dados-bancarios/<id>", methods=['PUT'])
@@ -84,18 +82,22 @@ def add_bank_accounts(id):
     except APIException as e:
         return handle_exception(e)
     
-    bank_accounts = request.json
-    
+    bank_accounts = request.get_json()
+    customer = json.loads(customer)
+
     for bank_account in bank_accounts:
         if bank_account not in customer['dados_bancarios']:
             customer['dados_bancarios'].append(bank_account)
 
     set_last_update(customer)
-    filter = {"_id": ObjectId(id)}
-    customers.update_one(filter, {"$set": customer}).raw_result
 
-    return json_util.dumps(customer)
-    
+    models.Customer.objects(id=id).update(
+        dados_bancarios = customer['dados_bancarios'],
+        ultima_atualizacao = customer['ultima_atualizacao']
+    )
+
+    return '', 200
+
 
 @customers_bp.route("/<id>", methods=['DELETE'])
 def delete_customer(id):
@@ -104,6 +106,6 @@ def delete_customer(id):
     except APIException as e:
         return handle_exception(e)
         
-    customers.delete_one({"_id": ObjectId(id)})
+    models.Customer.objects(id=id).delete()
     return "", 204
 
